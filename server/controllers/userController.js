@@ -47,6 +47,85 @@ export const Create= async(req,res)=>{
       res.status(500).json({ message: error.message });
     }
   };
+  export const FetchUser = async (req, res) => {
+    try {
+      const { id } = req.params;
+  
+      const userFind = await User.findOne({_id: id });
+  
+      if (userFind) {
+        console.log("User found");
+        return res.status(200).json(userFind);
+      }
+      
+      
+      return res.status(404).json({ message: "This id is not valid" });
+  
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
+  export const getResidents = async(req,res)=>{
+    try {
+    const users = await User.find({}, 'FirstName LastName Immeuble Appartement email');
+    res.status(200).json({
+      data: users
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching residents",
+      error: error.message
+    });
+  }
+  }
+export const UpdateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, password } = req.body;
+
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    
+    user.email = email;
+    
+    
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+
+    
+    const updatedUser = await user.save();
+
+    
+    const userToReturn = updatedUser.toObject();
+    delete userToReturn.password;
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      user: userToReturn
+    });
+
+  } catch (error) {
+    console.error("Update error:", error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
+    
+    return res.status(500).json({ 
+      message: "Error updating user",
+      error: error.message 
+    });
+  }
+};
   
 
 
