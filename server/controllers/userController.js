@@ -47,40 +47,6 @@ export const Create= async(req,res)=>{
       res.status(500).json({ message: error.message });
     }
   };
-<<<<<<< HEAD
-  //Dashboard Part :
-  export const getData = async(req,res)=>{
-    try{
-      const counts = await User.aggregate([
-      {
-        $group: {
-          _id: "$Immeuble",
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $sort: { count: -1 }
-      }
-    ]);
-    const immeubles = await User.distinct("Immeuble");
-    res.status(200).json({
-     
-      chartData:{
-        counts,
-        immeubles
-      }
-    }
-    )
-    }
-    catch(error){
-       res.status(500).json({
-      success: false,
-      message: "Couldn't get Immeubles statistics",
-      error: error.message
-    });
-    }
-  }
-=======
   export const FetchUser = async (req, res) => {
     try {
       const { id } = req.params;
@@ -99,7 +65,6 @@ export const Create= async(req,res)=>{
       res.status(500).json({ message: error.message });
     }
   };
->>>>>>> 718d53ea0792b15a69ee8aa717d001e9143ddeea
   export const getResidents = async(req,res)=>{
     try {
     const users = await User.find({}, 'FirstName LastName Immeuble Appartement email');
@@ -111,11 +76,6 @@ export const Create= async(req,res)=>{
       success: false,
       message: "Error fetching residents",
       error: error.message
-<<<<<<< HEAD
-    });
-  }
-  }
-=======
     });
   }
   }
@@ -166,7 +126,6 @@ export const UpdateUser = async (req, res) => {
     });
   }
 };
->>>>>>> 718d53ea0792b15a69ee8aa717d001e9143ddeea
   
   export const deleteUser = async (req, res) => {
   try {
