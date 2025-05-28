@@ -5,20 +5,26 @@ import dotenv from "dotenv"
 import route from "./route/userRoutes.js"
 import cors from "cors"
 import session from "express-session"
+
 const app =express();
 app.use(bodyParser.json());
-app.use(session({
-    secret: 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: false, 
-      maxAge: 1000 * 60 * 60 * 24, 
-    }
-  }));
 dotenv.config();
-app.use(cors());
+app.use(cors({
+  origin: `http://localhost:5173`, // Adjust this to your client URL
+  credentials: true
+}));
+app.use(session({
+  secret: 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: false, 
+    maxAge: 1000 * 60 * 60 * 24, 
+    sameSite: 'lax'
+  }
+  
+}));
 const PORT=process.env.PORT || 3000;
 const MONGO_URL=process.env.MONGO_URL;
 mongoose.connect(MONGO_URL)

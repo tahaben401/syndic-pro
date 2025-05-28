@@ -2,6 +2,9 @@ import User from "../modeles/User.js";
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
+import mongoose from 'mongoose';
+import session from "express-session";  
+import { Session } from "inspector/promises";
 const transporter = nodemailer.createTransport({
   service: 'Gmail',
   host: 'smtp.gmail.com',
@@ -76,6 +79,7 @@ export const verifyEmail = async (req, res) => {
 };
 export const login = async (req, res) => {
   try {
+    
     const { email, password } = req.body;
 
     const userFind = await User.findOne({ email });
@@ -94,41 +98,56 @@ export const login = async (req, res) => {
       return res.status(403).json({ message: "Please verify your email first." });
     }
 
-    // ✅ Store session values including role
-    req.session.userId = userFind._id;
+    const idString = userFind._id.toString();
+
+    req.session.userId = idString;
+    
     req.session.isLoggedIn = true;
     req.session.email = userFind.email;
-    req.session.role = userFind.role; // 0 = normal user, 1 = admin
-
-    console.log("User logged in, role:", userFind.role);
+    req.session.role = userFind.role;
 
     const userWithoutPassword = userFind.toObject();
     delete userWithoutPassword.password;
 
-    return res.status(200).json({
-      message: "Login successful",
-      user: userWithoutPassword,
-      role: userFind.role === 1 ? "admin" : "user"
+    req.session.save(err => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ message: "Session save error" });
+      }
+
+      return res.status(200).json({
+        message: "Login successful",
+        user: userWithoutPassword,
+        role: userFind.role === true ? "admin" : "user"
+      });
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+    res.status(500).json({ message: error.message });
+  }
 };
-export const getImmeublleApp= async (req, res) => {
-  try {
-    const  userId  = req.params.id;
 
-    const user = await User.findById(userId).select('Immeuble Appartement');
+
+
+export const getImmeublleApp= async (req, res) => {
+ try {
+  console.log('Session:', req.session);
+
+    const userId = req.session.userId;
+    console.log("User ID from session:", userId);
+    if (!userId) return res.status(401).json({ message: "Not logged in" });
+
+    const objectUserId = new mongoose.Types.ObjectId(`${userId}`);
+console.log("User ID from session:", objectUserId);
+    console.log("User ID from session:", userId);
+    
+    const user = await User.findById(userId).select("Immeuble Appartement");
+  
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.status(200).json({
-      Immeuble: user.Immeuble,
-      Appartement: user.Appartement
-    });
-  }
-  catch (error) {
+    res.status(200).json(user);
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 }
@@ -158,23 +177,25 @@ export const getAllImmeubleApp = async (req, res) => {
   }
 }
   export const FetchUser = async (req, res) => {
-    try {
-      const { id } = req.params;
-  
-      const userFind = await User.findOne({_id: id });
-  
-      if (userFind) {
-        console.log("User found");
-        return res.status(200).json(userFind);
-      }
-      
-      
-      return res.status(404).json({ message: "This id is not valid" });
-  
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+  try {
+    const userId = req.session.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Not authenticated1" });
     }
-  };
+
+    const user = await User.findById(userId).select("-password"); // exclude password
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
   export const getResidents = async(req,res)=>{
     try {
     const users = await User.find({}, 'FirstName LastName Immeuble Appartement email');
@@ -192,30 +213,26 @@ export const getAllImmeubleApp = async (req, res) => {
 
 export const UpdateUser = async (req, res) => {
   try {
-    const { id } = req.params;
+    const userId = req.session.userId;
     const { email, password } = req.body;
 
-    
+    if (!userId) {
+      return res.status(401).json({ message: "Not authenticated2" });
+    }
+
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const user = await User.findById(id);
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    
     user.email = email;
-    
-    
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
+    user.password = await bcrypt.hash(password, 10);
 
-    
     const updatedUser = await user.save();
-
-    
     const userToReturn = updatedUser.toObject();
     delete userToReturn.password;
 
@@ -226,17 +243,10 @@ export const UpdateUser = async (req, res) => {
 
   } catch (error) {
     console.error("Update error:", error);
-    
-    if (error.name === 'CastError') {
-      return res.status(400).json({ message: "Invalid user ID format" });
-    }
-    
-    return res.status(500).json({ 
-      message: "Error updating user",
-      error: error.message 
-    });
+    return res.status(500).json({ message: "Error updating user", error: error.message });
   }
 };
+
   
   export const deleteUser = async (req, res) => {
   try {
@@ -290,51 +300,14 @@ export const getData = async(req,res)=>{
     });
     }
   }
-  export const logout = async (req, res) => {
-    try {
-      // Store user info before destroying session
-      const userId = req.user?._id || null;
-      const sessionId = req.sessionID;
-  
-      // Destroy the session
-      req.session.destroy((err) => {
-        if (err) {
-          console.error(`Logout error for user ${userId}, session ${sessionId}:`, err);
-          return res.status(500).json({ success: false, message: 'Logout failed' });
-        }
-  
-        // Clear the session cookie
-        res.clearCookie('connect.sid', {
-          path: '/',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          domain: process.env.COOKIE_DOMAIN || undefined
-        });
-  
-        // Security headers
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-  
-        // Log successful logout
-        console.log(`User ${userId} logged out. Session ${sessionId} destroyed.`);
-  
-        // Send response
-        return res.status(200).json({ 
-          success: true, 
-          message: 'Logged out successfully',
-          timestamp: new Date().toISOString() 
-        });
-      });
-    } catch (error) {
-      console.error("Logout controller error:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "Internal server error during logout",
-        error: error.message 
-      });
-    }
-  };
 
-  
+
+  export const logout = (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      console.error("Session destroy error:", err);
+      return res.status(500).json({ message: "Error logging out" });
+    }
+    res.clearCookie('connect.sid'); // Clear the session cookie
+    res.status(200).json({ message: "Logged out successfully" });
+  })};

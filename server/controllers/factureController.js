@@ -1,5 +1,6 @@
 import Facture from "../modeles/Facture.js";
 import User from "../modeles/User.js";
+import mongoose from "mongoose";
 export const getAllFac = async (req, res) => {
     try {
        
@@ -43,14 +44,32 @@ export const CreateFact = async (req, res) => {
     }
 }
 export const getFactures = async (req, res) => {
-    try {
-        const UserId= req.params.id;
-        const factures = await Facture.find({ UserId: UserId });
-        res.status(200).json(factures);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+  try {
+    const userId = req.session.userId;
+    
+    if (!userId) {
+      return res.status(403).json({ message: "Not logged in" });
     }
+
+    // Validate if userId is a valid ObjectId string before conversion
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
+
+    const objectUserId = new mongoose.Types.ObjectId(userId);
+    console.log("User ID from session:", objectUserId);
+
+    const factures = await Facture.find({ UserId: objectUserId }).populate('UserId');
+    if (!factures || factures.length === 0) {
+      return res.status(404).json({ message: "No factures found for this user" });
+    } 
+    
+    res.status(200).json(factures);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 }
+
 export const updateFacture = async (req, res) => {
     try {
         const  id  = req.params.id;
