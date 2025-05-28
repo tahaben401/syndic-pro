@@ -1,5 +1,6 @@
 import express from "express"
 import { Create,FetchUser,getData,getResidents,login, UpdateUser } from "../controllers/userController.js";
+import { getAllFac } from "../controllers/factureController.js";
 
 
 
@@ -9,5 +10,6 @@ route.post("/get",login);
 route.get("/user/:id",FetchUser)
 route.get("/allusers",getResidents)
 route.patch("/updateUser/:id",UpdateUser)
-route.patch("/getIMS",getData)
+route.get("/getIMS",getData);
+route.get("/getAllFact",getAllFac)
 export default route;
