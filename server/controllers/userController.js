@@ -67,7 +67,7 @@ export const Create= async(req,res)=>{
   };
   export const getResidents = async(req,res)=>{
     try {
-    const users = await User.find({}, 'FirstName LastName Immeuble Appartement email');
+    const users = await User.find({role:false}, 'FirstName LastName Immeuble Appartement email');
     res.status(200).json({
       data: users
     });
