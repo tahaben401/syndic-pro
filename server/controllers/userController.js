@@ -79,6 +79,37 @@ export const Create= async(req,res)=>{
     });
   }
   }
+export const getData = async(req,res)=>{
+    try{
+      const counts = await User.aggregate([
+      {
+        $group: {
+          _id: "$Immeuble",
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]);
+    const immeubles = await User.distinct("Immeuble");
+    res.status(200).json({
+     
+      chartData:{
+        counts,
+        immeubles
+      }
+    }
+    )
+    }
+    catch(error){
+       res.status(500).json({
+      success: false,
+      message: "Couldn't get Immeubles statistics",
+      error: error.message
+    });
+    }
+  }
 export const UpdateUser = async (req, res) => {
   try {
     const { id } = req.params;
