@@ -1,6 +1,6 @@
 import express from "express"
-import { Create,FetchUser,getData,getResidents,login, UpdateUser,deleteUser } from "../controllers/userController.js";
-import { getAllFac } from "../controllers/factureController.js";
+import { Create,FetchUser,getData,getResidents,login, UpdateUser,deleteUser,verifyEmail ,getAllImmeubleApp, getImmeublleApp} from "../controllers/userController.js";
+import { CreateFact, getFactures,getAllFac,updateFacture } from "../controllers/factureController.js";
 
 
 
@@ -13,4 +13,10 @@ route.patch("/updateUser/:id",UpdateUser)
 route.get("/getIMS",getData);
 route.get("/getAllFact",getAllFac)
 route.delete('/users/:id', deleteUser);
+route.get('/verify/:token', verifyEmail);
+route.get("/geImmApp/:id",getImmeublleApp);
+route.get("/getAllImmeubleApp",getAllImmeubleApp);
+route.post("/addFact",CreateFact);
+route.put("/update/:id",updateFacture);
+route.get("/getFact/:id",getFactures);
 export default route;

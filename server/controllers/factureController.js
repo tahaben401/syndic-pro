@@ -12,3 +12,62 @@ export const getAllFac = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
+export const CreateFact = async (req, res) => {
+    try {
+        const { Numero, Date, Montant, UserId, Type } = req.body;
+    
+        // Check if the user exists
+        const user = await User.findById(UserId);
+        if (!user) {
+        return res.status(404).json({ message: "User not found" });
+        }
+    
+        // Create a new facture
+        const newFacture = new Facture({
+        Numero,
+        Date,
+        Montant,
+        UserId: UserId,
+        Type,
+        });
+    
+        await newFacture.save();
+    
+        // Add the facture to the user's facture array
+        user.facture.push(newFacture._id);
+        await user.save();
+    
+        res.status(201).json({ message: "Facture created successfully", facture: newFacture });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+export const getFactures = async (req, res) => {
+    try {
+        const UserId= req.params.id;
+        const factures = await Facture.find({ UserId: UserId });
+        res.status(200).json(factures);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+export const updateFacture = async (req, res) => {
+    try {
+        const  id  = req.params.id;
+        const {  Statut } = req.body;
+
+        const facture = await Facture.findByIdAndUpdate(id, {
+ 
+            
+            Statut
+        }, { new: true });
+
+        if (!facture) {
+            return res.status(404).json({ message: "Facture not found" });
+        }
+
+        res.status(200).json({ message: "Facture updated successfully", facture });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}

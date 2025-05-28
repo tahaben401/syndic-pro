@@ -1,52 +1,148 @@
-import User from "../modeles/User.js"
-import bcrypt from 'bcryptjs'
-export const Create= async(req,res)=>{
- try{
-   const {FirstName, LastName,email,password,Appartement,Immeuble} = req.body;
-   const userFind=await User.findOne({email:email});
-   if(userFind){
-    return res.status(400).json({message: "Already exists"});
-   }
-    const hashedPass=await bcrypt.hash(password,10);
+import User from "../modeles/User.js";
+import bcrypt from 'bcryptjs';
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
+const transporter = nodemailer.createTransport({
+  service: 'Gmail',
+  host: 'smtp.gmail.com',
+ 
+   port: 587,
+   auth: {
+     user: 'aymanemwa@gmail.com',
+     pass: 'fvkf xbwt tsrs tuww', // Use Gmail App Password
+   },
+ });
+export const Create = async (req, res) => {
+  try {
+    const { FirstName, LastName, email, password, Appartement, Immeuble } = req.body;
+    const userFind = await User.findOne({ email: email });
+
+    if (userFind) {
+      return res.status(400).json({ message: "Already exists" });
+    }
+
+    const hashedPass = await bcrypt.hash(password, 10);
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    // Temporarily save the user with isVerified = false
     const newUser = new User({
-        email,
-        FirstName,
-          LastName,
-       Immeuble:Immeuble,
-       Appartement:Appartement,
-        
-          password: hashedPass,
-       
-          role: false,
-          createdAt: new Date(),
-     
-     
-      });
-  
-      const savedData = await newUser.save();
-      res.status(200).json(savedData);
-    } catch (error) {
-      res.status(500).json({ Message: error.message });
+      email,
+      FirstName,
+      LastName,
+      Immeuble,
+      Appartement,
+      password: hashedPass,
+      role: false,
+      createdAt: new Date(),
+      isVerified: false,
+      verificationToken
+    });
+console.log("Token:", verificationToken);
+
+    await newUser.save();
+
+    const verifyURL = `http://localhost:3000/api/verify/${verificationToken}`;
+
+    await transporter.sendMail({
+      from: '"My App" <yourgmail@gmail.com>',
+      to: email,
+      subject: "Verify your account",
+      html: `<p>Hello ${FirstName},</p><p>Click the link below to verify your email:</p><a href="${verifyURL}">${verifyURL}</a>`,
+    });
+
+    res.status(200).json({ message: "Verification email sent. Please check your inbox." });
+
+  } catch (error) {
+    res.status(500).json({ Message: error.message });
+  }
+};
+export const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const user = await User.findOne({ verificationToken: token });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
     }
-  };
-  export const login = async (req, res) => {
-    try {
-      const { email, password } = req.body;
-  
-      const userFind = await User.findOne({ email, password });
-  
-      if (userFind) {
-        console.log("Welcome Back");
-        return res.status(200).json(userFind);
-      }
-  
-      // User not found
+   
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+
+    res.status(200).send("Email verified. You can now log in.");
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const userFind = await User.findOne({ email });
+
+    if (!userFind) {
       return res.status(404).json({ message: "Invalid email or password" });
-  
-    } catch (error) {
-      res.status(500).json({ message: error.message });
     }
-  };
+
+    const isMatch = await bcrypt.compare(password, userFind.password);
+
+    if (!isMatch) {
+      return res.status(404).json({ message: "Invalid email or password" });
+    }
+
+    if (!userFind.isVerified) {
+      return res.status(403).json({ message: "Please verify your email first." });
+    }
+
+    console.log("Welcome Back");
+    return res.status(200).json(userFind);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+export const getImmeublleApp= async (req, res) => {
+  try {
+    const  userId  = req.params.id;
+
+    const user = await User.findById(userId).select('Immeuble Appartement');
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json({
+      Immeuble: user.Immeuble,
+      Appartement: user.Appartement
+    });
+  }
+  catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+export const getAllImmeubleApp = async (req, res) => {
+  try {
+    // Find all users and select only Immeuble and Appartement fields
+    const users = await User.find({}).select('Immeuble Appartement');
+    
+    if (!users || users.length === 0) {
+      return res.status(404).json({ message: "No users found" });
+    }
+
+    // Transform the data into an array of objects with the required structure
+    const properties = users.map(user => ({
+    
+      Immeuble: user.Immeuble,
+      Appartement: user.Appartement
+    }));
+
+    res.status(200).json(properties);
+  }
+  catch (error) {
+    res.status(500).json({ 
+      message: "Error fetching properties",
+      error: error.message 
+    });
+  }
+}
   export const FetchUser = async (req, res) => {
     try {
       const { id } = req.params;
