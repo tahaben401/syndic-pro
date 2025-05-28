@@ -1,5 +1,5 @@
 import express from "express"
-import { Create,FetchUser,getData,getResidents,login, UpdateUser,deleteUser,verifyEmail ,getAllImmeubleApp, getImmeublleApp} from "../controllers/userController.js";
+import { Create,FetchUser,getData,getResidents,login, UpdateUser,deleteUser,verifyEmail ,getAllImmeubleApp, getImmeublleApp, logout} from "../controllers/userController.js";
 import { CreateFact, getFactures,getAllFac,updateFacture } from "../controllers/factureController.js";
 
 
@@ -7,6 +7,7 @@ import { CreateFact, getFactures,getAllFac,updateFacture } from "../controllers/
 const route =express.Router();
 route.post("/create",Create);
 route.post("/get",login);
+route.post("/logout",logout)
 route.get("/user/:id",FetchUser)
 route.get("/allusers",getResidents)
 route.patch("/updateUser/:id",UpdateUser)

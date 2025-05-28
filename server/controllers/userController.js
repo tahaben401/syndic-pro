@@ -94,12 +94,26 @@ export const login = async (req, res) => {
       return res.status(403).json({ message: "Please verify your email first." });
     }
 
-    console.log("Welcome Back");
-    return res.status(200).json(userFind);
+    // ✅ Store session values including role
+    req.session.userId = userFind._id;
+    req.session.isLoggedIn = true;
+    req.session.email = userFind.email;
+    req.session.role = userFind.role; // 0 = normal user, 1 = admin
+
+    console.log("User logged in, role:", userFind.role);
+
+    const userWithoutPassword = userFind.toObject();
+    delete userWithoutPassword.password;
+
+    return res.status(200).json({
+      message: "Login successful",
+      user: userWithoutPassword,
+      role: userFind.role === 1 ? "admin" : "user"
+    });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+    res.status(500).json({ message: error.message });
+  }
 };
 export const getImmeublleApp= async (req, res) => {
   try {
@@ -276,6 +290,51 @@ export const getData = async(req,res)=>{
     });
     }
   }
-
+  export const logout = async (req, res) => {
+    try {
+      // Store user info before destroying session
+      const userId = req.user?._id || null;
+      const sessionId = req.sessionID;
+  
+      // Destroy the session
+      req.session.destroy((err) => {
+        if (err) {
+          console.error(`Logout error for user ${userId}, session ${sessionId}:`, err);
+          return res.status(500).json({ success: false, message: 'Logout failed' });
+        }
+  
+        // Clear the session cookie
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          domain: process.env.COOKIE_DOMAIN || undefined
+        });
+  
+        // Security headers
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+  
+        // Log successful logout
+        console.log(`User ${userId} logged out. Session ${sessionId} destroyed.`);
+  
+        // Send response
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Logged out successfully',
+          timestamp: new Date().toISOString() 
+        });
+      });
+    } catch (error) {
+      console.error("Logout controller error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Internal server error during logout",
+        error: error.message 
+      });
+    }
+  };
 
   

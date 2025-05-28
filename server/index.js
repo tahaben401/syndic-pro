@@ -4,9 +4,19 @@ import bodyParser from "body-parser"
 import dotenv from "dotenv"
 import route from "./route/userRoutes.js"
 import cors from "cors"
-
+import session from "express-session"
 const app =express();
 app.use(bodyParser.json());
+app.use(session({
+    secret: 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false, 
+      maxAge: 1000 * 60 * 60 * 24, 
+    }
+  }));
 dotenv.config();
 app.use(cors());
 const PORT=process.env.PORT || 3000;
