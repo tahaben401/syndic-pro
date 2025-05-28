@@ -79,6 +79,7 @@ export const Create= async(req,res)=>{
     });
   }
   }
+
 export const UpdateUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -127,5 +128,58 @@ export const UpdateUser = async (req, res) => {
   }
 };
   
+  export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedUser = await User.findByIdAndDelete(id);
+
+    if (!deletedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ 
+      message: "User  was deleted successfully",
+      deletedUser 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: "There was an Error in  deleting user",
+      error: error.message 
+    });
+  }
+};
+export const getData = async(req,res)=>{
+    try{
+      const counts = await User.aggregate([
+      {
+        $group: {
+          _id: "$Immeuble",
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]);
+    const immeubles = await User.distinct("Immeuble");
+    res.status(200).json({
+     
+      chartData:{
+        counts,
+        immeubles
+      }
+    }
+    )
+    }
+    catch(error){
+       res.status(500).json({
+      success: false,
+      message: "Couldn't get Immeubles statistics",
+      error: error.message
+    });
+    }
+  }
 
 
+  
